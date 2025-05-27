@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>AR con Modelo GLTF y Marcador Hiro</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/101/three.min.js"></script>
+    <script src="dist/THREEAR.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r101/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h3>Detector de Marcador AR con Modelo GLTF</h3>
+        <p>Apunta la cámara al marcador Hiro para ver el modelo 3D</p>
+        <p id="status">Inicializando...</p>
+    </div>
+    
+    <div id="error"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
