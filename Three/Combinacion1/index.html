@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>AR Completo: Modelo GLTF + Texto 3D + Audio</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/101/three.min.js"></script>
+    <script src="dist/THREEAR.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r101/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="js/loaders/FontLoader.js"></script>
+    <script src="js/geometries/TextGeometry.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+        }
+        
+        #loadingSpinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #loadingTitle {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        #loadingStatus {
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+            min-height: 20px;
+        }
+        
+        #loadingChecklist {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        #loadingChecklist li {
+            padding: 8px 0;
+            font-size: 14px;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        
+        #loadingChecklist li.completed {
+            opacity: 1;
+            color: #4CAF50;
+        }
+        
+        #loadingChecklist li.completed::before {
+            content: "✓ ";
+            font-weight: bold;
+        }
+        
+        #loadingChecklist li:not(.completed)::before {
+            content: "○ ";
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            z-index: 200;
+            text-align: center;
+        }
+        
+        #audioInfo {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 128, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            display: none;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">
+        <div id="loadingSpinner"></div>
+        <div id="loadingTitle">Cargando Sistema AR</div>
+        <div id="loadingStatus">Inicializando componentes...</div>
+        <ul id="loadingChecklist">
+            <li id="audioCheck">Audio inicializado correctamente</li>
+            <li id="modelCheck">Modelo GLTF cargado</li>
+            <li id="textCheck">Texto 3D creado</li>
+        </ul>
+    </div>
+
+    <audio loop id="modelAudio" preload="auto" style="display: none">
+        <source src="assets/358232_j_s_song.ogg" type="audio/ogg">
+        <source src="assets/358232_j_s_song.mp3" type="audio/mpeg">
+        Tu navegador no soporta audio HTML5.
+    </audio>
+    
+    <div id="info">
+        <h3>AR Completo - Marcador Hiro</h3>
+        <p>Apunta la cámara al marcador Hiro</p>
+        <p id="status">Inicializando...</p>
+    </div>
+    
+    <div id="error"></div>
+    
+    <div id="audioInfo">
+        <p>🔊 Audio reproduciéndose</p>
+    </div>
+    
+    <div id="instructions">
+        <p>Toca la pantalla para activar audio</p>
+    </div>
+
+    <script>
+        var renderer, scene, camera, markerGroup;
+        var gltfModel = null;
+        var textMesh = null;
+        var statusElement = document.getElementById('status');
+        var errorElement = document.getElementById('error');
+        var audioInfoElement = document.getElementById('audioInfo');
+        
+        var listener, positionalAudio;
+        var audioElement = document.getElementById('modelAudio');
+        var audioInitialized = false;
+        var markerDetected = false;
+        
+        var loadingStatus = {
+            audio: false,
+            model: false,
+            text: false
+        };
+        
+        function updateLoadingStatus(component) {
+            loadingStatus[component] = true;
+            document.getElementById(component + 'Check').classList.add('completed');
+            
+            var completedCount = Object.values(loadingStatus).filter(Boolean).length;
+            document.getElementById('loadingStatus').textContent = `${completedCount}/3 componentes cargados`;
+            
+            if (loadingStatus.audio && loadingStatus.model && loadingStatus.text) {
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                }, 500);
+            }
+        }
+        
+        renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+        renderer.setClearColor(new THREE.Color('lightgrey'), 0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.top = '0px';
+        renderer.domElement.style.left = '0px';
+        document.body.appendChild(renderer.domElement);
+        
+        scene = new THREE.Scene();
+        camera = new THREE.Camera();
+        scene.add(camera);
+        
+        listener = new THREE.AudioListener();
+        camera.add(listener);
+        
+        markerGroup = new THREE.Group();
+        scene.add(markerGroup);
+        
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 0.5).normalize();
+        scene.add(directionalLight);
+        
+        function initializeAudio() {
+            if (!audioInitialized && audioElement) {
+                try {
+                    positionalAudio = new THREE.PositionalAudio(listener);
+                    positionalAudio.setMediaElementSource(audioElement);
+                    positionalAudio.setRefDistance(1);
+                    positionalAudio.setRolloffFactor(1);
+                    positionalAudio.setDistanceModel('exponential');
+                    positionalAudio.setMaxDistance(10);
+                    positionalAudio.setVolume(0.5);
+                    
+                    markerGroup.add(positionalAudio);
+                    audioInitialized = true;
+                    console.log('Audio inicializado correctamente');
+                    updateLoadingStatus('audio');
+                } catch (error) {
+                    console.warn('Error al inicializar audio:', error);
+                }
+            }
+        }
+        
+        function loadGLTFModel(modelPath) {
+            var loader = new THREE.GLTFLoader();
+            
+            loader.load(
+                modelPath,
+                function(gltf) {
+                    gltfModel = gltf.scene;
+                    gltfModel.scale.set(0.3, 0.3, 0.3);
+                    gltfModel.position.set(0, -0.5, 0);
+                    markerGroup.add(gltfModel);
+                    
+                    statusElement.textContent = 'Modelo 3D cargado exitosamente';
+                    console.log('Modelo GLTF cargado');
+                    updateLoadingStatus('model');
+                },
+                function(xhr) {
+                    var porcentaje = (xhr.loaded / xhr.total * 100).toFixed(2);
+                    statusElement.textContent = 'Cargando modelo: ' + porcentaje + '%';
+                },
+                function(error) {
+                    console.error('Error al cargar modelo:', error);
+                    cargarGeometriaRespaldo();
+                }
+            );
+        }
+        
+        function cargarGeometriaRespaldo() {
+            var geometry = new THREE.TorusKnotGeometry(0.2, 0.08, 64, 16);
+            var material = new THREE.MeshNormalMaterial();
+            var backup = new THREE.Mesh(geometry, material);
+            backup.position.set(0, -0.5, 0);
+            markerGroup.add(backup);
+            
+            statusElement.textContent = 'Usando geometría de respaldo';
+            updateLoadingStatus('model');
+        }
+        
+        function createText3D() {
+            var fontLoader = new THREE.FontLoader();
+            
+            fontLoader.load('fonts/helvetiker_regular.typeface.json', function(font) {
+                var textGeometry = new THREE.TextGeometry('AR DEMO', {
+                    font: font,
+                    size: 0.15,
+                    height: 0.05,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.01,
+                    bevelSize: 0.01,
+                    bevelSegments: 3
+                });
+                
+                textGeometry.computeBoundingBox();
+                var xMid = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+                textGeometry.translate(xMid, 0, 0);
+                
+                var textMaterial = new THREE.MeshNormalMaterial({
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
+                });
+                
+                textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.set(0, 0.8, 0);
+                textMesh.rotation.x = -Math.PI / 2;
+                
+                markerGroup.add(textMesh);
+                console.log('Texto 3D creado');
+                updateLoadingStatus('text');
+            }, undefined, function(error) {
+                console.error('Error al cargar fuente:', error);
+                createFallbackText();
+            });
+        }
+        
+        function createFallbackText() {
+            var geometry = new THREE.PlaneGeometry(0.8, 0.2);
+            var canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            var context = canvas.getContext('2d');
+            
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, 256, 64);
+            context.fillStyle = '#000000';
+            context.font = '24px Arial';
+            context.textAlign = 'center';
+            context.fillText('AR DEMO', 128, 40);
+            
+            var texture = new THREE.CanvasTexture(canvas);
+            var material = new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                transparent: true 
+            });
+            
+            textMesh = new THREE.Mesh(geometry, material);
+            textMesh.position.set(0, 0.8, 0);
+            textMesh.rotation.x = -Math.PI / 2;
+            
+            markerGroup.add(textMesh);
+            console.log('Texto 3D creado');
+            updateLoadingStatus('text');
+        }
+        
+        function playAudio() {
+            if (audioElement && audioInitialized) {
+                try {
+                    var playPromise = audioElement.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            audioInfoElement.style.display = 'block';
+                        }).catch(error => {
+                            console.warn('Error al reproducir audio:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error al reproducir audio:', error);
+                }
+            }
+        }
+        
+        function pauseAudio() {
+            if (audioElement && !audioElement.paused) {
+                try {
+                    audioElement.pause();
+                    audioInfoElement.style.display = 'none';
+                } catch (error) {
+                    console.warn('Error al pausar audio:', error);
+                }
+            }
+        }
+        
+        document.addEventListener('click', function() {
+            document.getElementById('instructions').style.display = 'none';
+        }, { once: true });
+        
+        document.addEventListener('touchstart', function() {
+            document.getElementById('instructions').style.display = 'none';
+        }, { once: true });
+        
+        var source = new THREEAR.Source({ renderer: renderer, camera: camera });
+        
+        THREEAR.initialize({ source: source, lostTimeout: 1000 }).then((controller) => {
+            
+            initializeAudio();
+            loadGLTFModel('model/lowpoly_human_heart.glb');
+            createText3D();
+            
+            var patternMarker = new THREEAR.PatternMarker({
+                patternUrl: 'data/patt.hiro',
+                markerObject: markerGroup,
+                minConfidence: 0.3
+            });
+            
+            controller.trackMarker(patternMarker);
+            
+            controller.addEventListener('markerFound', function(event) {
+                console.log('Marcador encontrado');
+                markerDetected = true;
+                statusElement.textContent = 'Marcador detectado - Contenido AR activo';
+                statusElement.style.backgroundColor = 'rgba(0, 255, 0, 0.7)';
+                
+                playAudio();
+            });
+            
+            controller.addEventListener('markerLost', function(event) {
+                console.log('Marcador perdido');
+                markerDetected = false;
+                statusElement.textContent = 'Buscando marcador Hiro...';
+                statusElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                pauseAudio();
+            });
+            
+            var lastTimeMsec = 0;
+            requestAnimationFrame(function animate(nowMsec) {
+                requestAnimationFrame(animate);
+                
+                lastTimeMsec = lastTimeMsec || nowMsec - 1000/60;
+                var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+                lastTimeMsec = nowMsec;
+                
+                controller.update(source.domElement);
+                
+                if (gltfModel) {
+                    gltfModel.rotation.y += deltaMsec/2000 * Math.PI;
+                }
+                
+                if (textMesh) {
+                    textMesh.rotation.z += deltaMsec/3000 * Math.PI;
+                }
+                
+                renderer.render(scene, camera);
+            });
+            
+            statusElement.textContent = 'Sistema AR listo - Busca el marcador Hiro';
+            
+        }).catch(function(error) {
+            console.error('Error al inicializar AR:', error);
+            errorElement.textContent = 'Error al inicializar sistema AR: ' + error.message;
+            errorElement.style.display = 'block';
+        });
+        
+        window.addEventListener('resize', function() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        window.addEventListener('error', function(event) {
+            console.error('Error global:', event);
+            errorElement.textContent = 'Error en la aplicación: ' + event.message;
+            errorElement.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
