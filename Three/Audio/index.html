@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>AR con Modelo GLTF, Marcador Hiro y Audio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/101/three.min.js"></script>
+    <script src="dist/THREEAR.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+            z-index: 200;
+        }
+        
+        #audioInfo {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <audio loop id="modelAudio" preload="auto" style="display: none">
+        <source src="assets/358232_j_s_song.ogg" type="audio/ogg">
+        <source src="assets/358232_j_s_song.mp3" type="audio/mpeg">
+    </audio>
+    
+    <div id="error"></div>
+    
+    <div id="audioInfo">
+        <p>🔊 Audio activo</p>
+    </div>
+
+    <script>
+        var renderer, scene, camera, markerGroup;
+        var gltfModel = null;
+        var statusElement = document.getElementById('status');
+        var errorElement = document.getElementById('error');
+        var audioInfoElement = document.getElementById('audioInfo');
+        
+        var listener, positionalAudio;
+        var audioElement = document.getElementById('modelAudio');
+        var audioInitialized = false;
+        
+        renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+        renderer.setClearColor(new THREE.Color('lightgrey'), 0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.top = '0px';
+        renderer.domElement.style.left = '0px';
+        document.body.appendChild(renderer.domElement);
+        
+        scene = new THREE.Scene();
+        camera = new THREE.Camera();
+        scene.add(camera);
+        
+        listener = new THREE.AudioListener();
+        camera.add(listener);
+        
+        markerGroup = new THREE.Group();
+        scene.add(markerGroup);
+        
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 0.5).normalize();
+        scene.add(directionalLight);
+        
+        function initializeAudio() {
+            if (!audioInitialized) {
+                positionalAudio = new THREE.PositionalAudio(listener);
+                
+                if (audioElement) {
+                    try {
+                        positionalAudio.setMediaElementSource(audioElement);
+                        positionalAudio.setRefDistance(1);
+                        positionalAudio.setRolloffFactor(1);
+                        positionalAudio.setDistanceModel('exponential');
+                        positionalAudio.setMaxDistance(10);
+                        positionalAudio.setVolume(0.5);
+                        
+                        markerGroup.add(positionalAudio);
+                        
+                        audioInitialized = true;
+                    } catch (error) {
+                        console.warn('Error al inicializar audio:', error);
+                    }
+                } else {
+                    console.warn('Elemento de audio no encontrado');
+                }
+            }
+        }
+
+        function cargarGeometriaRespaldo() {
+            var geometry = new THREE.TorusKnotGeometry(0.3, 0.1, 64, 16);
+            var material = new THREE.MeshNormalMaterial();
+            var torus = new THREE.Mesh(geometry, material);
+            torus.position.y = 0.5;
+            markerGroup.add(torus);
+            
+            initializeAudio();
+            
+            statusElement.textContent = 'Usando geometría de respaldo. Busca el marcador Hiro...';
+        }
+        
+        function playAudio() {
+            if (audioElement && audioInitialized) {
+                try {
+                    var playPromise = audioElement.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise.then(function() {
+                            audioInfoElement.style.display = 'block';
+                        }).catch(function(error) {
+                            console.warn('Error al reproducir audio:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error al reproducir audio:', error);
+                }
+            }
+        }
+        
+        function pauseAudio() {
+            if (audioElement && !audioElement.paused) {
+                try {
+                    audioElement.pause();
+                    audioInfoElement.style.display = 'none';
+                } catch (error) {
+                    console.warn('Error al pausar audio:', error);
+                }
+            }
+        }
+        
+        document.addEventListener('click', function() {
+            if (audioElement && audioElement.paused && markerDetected) {
+                playAudio();
+            }
+        }, { once: true });
+        
+        var markerDetected = false;
+        
+        var source = new THREEAR.Source({ renderer: renderer, camera: camera });
+        
+        THREEAR.initialize({ source: source, lostTimeout: 1000 }).then((controller) => {
+            
+            initializeAudio();
+            
+            var patternMarker = new THREEAR.PatternMarker({
+                patternUrl: 'data/patt.hiro',
+                markerObject: markerGroup,
+                minConfidence: 0.3
+            });
+            
+            controller.trackMarker(patternMarker);
+            
+            controller.addEventListener('markerFound', function(event) {
+                playAudio();
+            });
+            
+            controller.addEventListener('markerLost', function(event) {
+                pauseAudio();
+            });
+            
+            var lastTimeMsec = 0;
+            requestAnimationFrame(function animate(nowMsec) {
+                requestAnimationFrame(animate);
+                
+                lastTimeMsec = lastTimeMsec || nowMsec - 1000/60;
+                var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+                lastTimeMsec = nowMsec;
+                
+                controller.update(source.domElement);
+                
+                if (gltfModel) {
+                    gltfModel.rotation.y += deltaMsec/2000 * Math.PI;
+                }
+                
+                renderer.render(scene, camera);
+            });
+            
+        }).catch(function(error) {
+            console.error('Error al inicializar AR:', error);
+            errorElement.textContent = 'Error al inicializar AR: ' + error.message;
+            errorElement.style.display = 'block';
+        });
+        
+        window.addEventListener('resize', function() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        window.addEventListener('error', function(event) {
+            console.error('Error global:', event);
+            errorElement.textContent = 'Error: ' + event.message;
+            errorElement.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
