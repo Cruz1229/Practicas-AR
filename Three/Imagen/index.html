@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <title>AR Imagen 3D</title>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Monospace; }
+    canvas { position: absolute; top: 0; left: 0; }
+    #error { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      color: red; 
+      font-size: 18px; 
+      text-align: center; 
+      background: rgba(255,255,255,0.9); 
+      padding: 20px; 
+      border-radius: 10px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="error">
+    <h3>Error al cargar archivos</h3>
+    <p>Verifica que los siguientes archivos existan:</p>
+    <ul>
+      <li>js/three.js</li>
+      <li>jsartoolkit5/artoolkit.min.js</li>
+      <li>threex/threex-artoolkitsource.js</li>
+    </ul>
+  </div>
+
+<script>
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Error cargando ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadAllScripts() {
+    try {
+      await loadScript('three/three.js');
+      
+      if (typeof THREE === 'undefined') {
+        throw new Error('THREE.js no se cargó correctamente');
+      }
+      
+      await loadScript('jsartoolkit5/artoolkit.min.js');
+      await loadScript('jsartoolkit5/artoolkit.api.js');
+      await loadScript('threex/threex-artoolkitsource.js');
+      await loadScript('threex/threex-artoolkitcontext.js');
+      await loadScript('threex/threex-arbasecontrols.js');
+      await loadScript('threex/threex-armarkercontrols.js');
+      
+      startApp();
+    } catch (error) {
+      console.error('Error cargando scripts:', error);
+      document.getElementById('error').style.display = 'block';
+    }
+  }
+
+  function startApp() {
+    let scene, camera, renderer, clock;
+    let arToolkitSource, arToolkitContext;
+    let markerRoot;
+
+    initialize();
+    animate();
+
+    function initialize() {
+      scene = new THREE.Scene();
+      camera = new THREE.Camera();
+      scene.add(camera);
+
+      const ambient = new THREE.AmbientLight(0xcccccc, 0.5);
+      scene.add(ambient);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setSize(640, 480);
+      document.body.appendChild(renderer.domElement);
+
+      clock = new THREE.Clock();
+
+      arToolkitSource = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
+      arToolkitSource.init(() => onResize());
+      window.addEventListener('resize', () => onResize());
+
+      arToolkitContext = new THREEx.ArToolkitContext({
+        cameraParametersUrl: 'data/camera_para.dat',
+        detectionMode: 'mono'
+      });
+      arToolkitContext.init(() => {
+        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+      });
+
+      markerRoot = new THREE.Group();
+      scene.add(markerRoot);
+      new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+        type: 'pattern',
+        patternUrl: 'data/patt.hiro'
+      });
+
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.load('assets/imagen.jpg', texture => {
+        const imageGeometry = new THREE.PlaneGeometry(1, 1);
+        const imageMaterial = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 0.9,
+          side: THREE.DoubleSide
+        });
+
+        const imageMesh = new THREE.Mesh(imageGeometry, imageMaterial);
+        imageMesh.position.y = 0.5;
+        imageMesh.rotation.x = -Math.PI / 2;
+        markerRoot.add(imageMesh);
+      }, undefined, error => {
+        console.error('Error cargando la imagen:', error);
+        
+        const fallbackGeometry = new THREE.PlaneGeometry(1, 1);
+        const fallbackMaterial = new THREE.MeshBasicMaterial({
+          color: 0xff6b6b,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        });
+        
+        const fallbackMesh = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+        fallbackMesh.position.y = 0.5;
+        fallbackMesh.rotation.x = -Math.PI / 2;
+        markerRoot.add(fallbackMesh);
+      });
+    }
+
+    function onResize() {
+      arToolkitSource.onResize();
+      arToolkitSource.copySizeTo(renderer.domElement);
+      if (arToolkitContext.arController) {
+        arToolkitSource.copySizeTo(arToolkitContext.arController.canvas);
+      }
+    }
+
+    function update() {
+      if (arToolkitSource.ready) {
+        arToolkitContext.update(arToolkitSource.domElement);
+      }
+    }
+
+    function render() {
+      renderer.render(scene, camera);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      update();
+      render();
+    }
+  }
+
+  loadAllScripts();
+</script>
+</body>
+</html>
