@@ -146,8 +146,7 @@
     </div>
 
     <audio loop id="modelAudio" preload="auto" style="display: none">
-        <source src="assets/358232_j_s_song.ogg" type="audio/ogg">
-        <source src="assets/358232_j_s_song.mp3" type="audio/mpeg">
+        <source src="assets/latidos.mp3" type="audio/mpeg">
     </audio>
     
     <div id="info">
@@ -162,10 +161,6 @@
         <p>🔊 Audio reproduciendo</p>
     </div>
 
-    <div id="instructions">
-        <p>Toca la pantalla para activar audio</p>
-    </div>
-
     <script>
         var renderer, scene, camera, markerGroup;
         var gltfModel = null;
@@ -173,7 +168,6 @@
         var statusElement = document.getElementById('status');
         var errorElement = document.getElementById('error');
         var audioInfoElement = document.getElementById('audioInfo');
-        var instructionsElement = document.getElementById('instructions');
         
         var listener, positionalAudio;
         var audioElement = document.getElementById('modelAudio');
@@ -264,7 +258,12 @@
                     gltfModel = gltf.scene;
                     
                     gltfModel.scale.set(0.4, 0.4, 0.4);
-                    gltfModel.position.set(-0.5, 0, 0);
+
+                    gltfModel.position.x = -15 * Math.PI / 100;
+                    gltfModel.position.y = 0;
+                    gltfModel.position.z = 20 * Math.PI / 100;
+
+                    gltfModel.rotation.x = -100 * Math.PI / 180;
                     
                     markerGroup.add(gltfModel);
                     
@@ -296,13 +295,16 @@
                     var imageMaterial = new THREE.MeshBasicMaterial({
                         map: texture,
                         transparent: true,
-                        opacity: 0.9,
+                        opacity: 1,
                         side: THREE.DoubleSide
                     });
 
                     imageMesh = new THREE.Mesh(imageGeometry, imageMaterial);
-                    imageMesh.position.set(0.5, 0.4, 0);
-                    imageMesh.rotation.x = -Math.PI / 4;
+
+                    imageMesh.position.y = 0.5;
+                    imageMesh.position.x = 15 * Math.PI / 100;
+
+                    imageMesh.rotation.x = -Math.PI / 2;
                     
                     markerGroup.add(imageMesh);
                     
@@ -351,7 +353,6 @@
                     if (playPromise !== undefined) {
                         playPromise.then(function() {
                             audioInfoElement.style.display = 'block';
-                            instructionsElement.style.display = 'none';
                         }).catch(function(error) {
                             console.warn('Error al reproducir audio:', error);
                         });
@@ -377,8 +378,8 @@
 
         THREEAR.initialize({ source: source, lostTimeout: 1000 }).then((controller) => {
             
-            loadGLTFModel('model/lowpoly_human_heart.glb');
             loadImage('assets/imagen.jpg');
+            loadGLTFModel('model/lowpoly_human_heart.glb');
             initializeAudio();
             
             var patternMarker = new THREEAR.PatternMarker({
@@ -418,10 +419,6 @@
                 
                 if (gltfModel && markerDetected) {
                     gltfModel.rotation.y += deltaMsec/2000 * Math.PI;
-                }
-                
-                if (imageMesh && markerDetected) {
-                    imageMesh.rotation.z += deltaMsec/4000 * Math.PI;
                 }
                 
                 renderer.render(scene, camera);
