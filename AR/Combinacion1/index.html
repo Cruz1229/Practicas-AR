@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>AR Completo - Modelo 3D, Texto y Audio</title>
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #status {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        .searching {
+            background: rgba(255, 165, 0, 0.8);
+        }
+        
+        .found {
+            background: rgba(34, 139, 34, 0.8);
+        }
+        
+        #instructions {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status" class="searching">Buscando marcador Hiro...</div>
+    
+    <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+        <a-assets>
+            <audio id="arSound" src="assets/audio/358232_j_s_song.mp3" preload="auto"></audio>
+        </a-assets>
+
+        <a-marker type="pattern" preset="hiro" id="hiroMarker">
+            <a-entity id="arContent" position="0 0 0">
+                <a-entity
+                    id="model3d"
+                    gltf-model="url(assets/model/scene.gltf)"
+                    scale="0.5 0.5 0.5"
+                    rotation="-90 0 0"
+                    position="0 0 0"
+                    animation="property: rotation; to: -90 360 0; loop: true; dur: 10000">
+                </a-entity>
+                
+                <a-text 
+                    id="arText"
+                    value="¡Marcador Detectado!" 
+                    color="#00ff00" 
+                    align="center"
+                    position="0 1.5 0"
+                    rotation="-90 0 0"
+                    scale="2 2 2"
+                    font="kelsonsans"
+                    animation="property: scale; to: 2.2 2.2 2.2; dir: alternate; loop: true; dur: 1000">
+                </a-text>
+                
+                <a-entity
+                    id="soundEntity"
+                    position="0 0 0"
+                    sound="src: #arSound; autoplay: false; loop: false; positional: true; volume: 0.8">
+                </a-entity>
+            </a-entity>
+        </a-marker>
+        
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const marker = document.querySelector('#hiroMarker');
+        const soundEntity = document.querySelector('#soundEntity');
+        const statusElement = document.querySelector('#status');
+        const arContent = document.querySelector('#arContent');
+        let hasPlayed = false;
+        let isMarkerVisible = false;
+
+        marker.addEventListener('markerFound', function() {
+            console.log('Marcador encontrado');
+            statusElement.textContent = '✓ Marcador detectado - Experiencia AR activa';
+            statusElement.className = 'found';
+            isMarkerVisible = true;
+            
+            arContent.setAttribute('visible', 'true');
+            
+            if (!hasPlayed && soundEntity.components.sound) {
+                try {
+                    soundEntity.components.sound.playSound();
+                    hasPlayed = true;
+                    console.log('Audio reproducido');
+                } catch (error) {
+                    console.log('Error al reproducir audio:', error);
+                }
+            }
+        });
+
+        marker.addEventListener('markerLost', function() {
+            console.log('Marcador perdido');
+            statusElement.textContent = 'Buscando marcador Hiro...';
+            statusElement.className = 'searching';
+            isMarkerVisible = false;
+            
+            arContent.setAttribute('visible', 'false');
+            
+            if (soundEntity.components.sound) {
+                try {
+                    soundEntity.components.sound.stopSound();
+                    hasPlayed = false;
+                    console.log('Audio detenido');
+                } catch (error) {
+                    console.log('Error al detener audio:', error);
+                }
+            }
+        });
+
+        window.addEventListener('click', function() {
+            if (isMarkerVisible && !hasPlayed) {
+                if (soundEntity.components.sound) {
+                    try {
+                        soundEntity.components.sound.playSound();
+                        hasPlayed = true;
+                        console.log('Audio reproducido manualmente');
+                    } catch (error) {
+                        console.log('Error al reproducir audio manualmente:', error);
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                console.log('Sistema AR inicializado');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

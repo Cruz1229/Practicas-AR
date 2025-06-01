@@ -1,0 +1,8 @@
+Model Information:
+* title:	Lowpoly Human Heart
+* source:	https://sketchfab.com/3d-models/lowpoly-human-heart-69d53ff1e0714f11b416eacc9263959b
+* author:	l0r3l3i (https://sketchfab.com/l0r3l3i)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
