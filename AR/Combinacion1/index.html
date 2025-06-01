@@ -51,7 +51,7 @@
     
     <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-assets>
-            <audio id="arSound" src="assets/audio/358232_j_s_song.mp3" preload="auto"></audio>
+            <audio id="arSound" src="assets/audio/latidos.mp3" preload="auto"></audio>
         </a-assets>
 
         <a-marker type="pattern" preset="hiro" id="hiroMarker">
@@ -61,14 +61,13 @@
                     gltf-model="url(assets/model/scene.gltf)"
                     scale="0.5 0.5 0.5"
                     rotation="-90 0 0"
-                    position="0 0 0"
-                    animation="property: rotation; to: -90 360 0; loop: true; dur: 10000">
+                    position="-0.1 -0.9 0.2">
                 </a-entity>
                 
                 <a-text 
                     id="arText"
-                    value="¡Marcador Detectado!" 
-                    color="#00ff00" 
+                    value="Corazon" 
+                    color="#FF0000" 
                     align="center"
                     position="0 1.5 0"
                     rotation="-90 0 0"
@@ -80,7 +79,7 @@
                 <a-entity
                     id="soundEntity"
                     position="0 0 0"
-                    sound="src: #arSound; autoplay: false; loop: false; positional: true; volume: 0.8">
+                    sound="src: #arSound; autoplay: false; loop: true; positional: true; volume: 3">
                 </a-entity>
             </a-entity>
         </a-marker>
