@@ -2,8 +2,8 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR con Audio - Marcador Hiro</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <title>Sonido al Detectar Marcador Hiro</title>
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body {
@@ -12,274 +12,69 @@
             font-family: Arial, sans-serif;
         }
         
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            color: white;
-        }
-        
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(255,255,255,0.3);
-            border-top: 5px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .loading-text {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        
-        .loading-progress {
-            font-size: 14px;
-            opacity: 0.8;
-        }
-        
-        #marker-status {
+        #status {
             position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 15px 25px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
             text-align: center;
-            z-index: 100;
-            transition: all 0.3s ease;
-            min-width: 200px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         
-        .marker-searching {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            animation: pulse 2s infinite;
+        .searching {
+            background: rgba(255, 165, 0, 0.8);
         }
         
-        .marker-found {
-            background: linear-gradient(45deg, #00b894, #00a085);
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 0.8; }
-            50% { opacity: 1; }
-            100% { opacity: 0.8; }
-        }
-        
-        #instructions {
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            color: white;
-            background-color: rgba(0,0,0,0.7);
-            padding: 15px;
-            font-size: 16px;
-        }
-        
-        .hidden {
-            display: none !important;
+        .found {
+            background: rgba(34, 139, 34, 0.8);
         }
     </style>
 </head>
 <body>
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <div class="loading-text">Cargando experiencia AR</div>
-        <div class="loading-progress">Preparando recursos...</div>
-    </div>
-
-    <div id="marker-status" class="hidden marker-searching">
-        🔍 Buscando marcador Hiro...
-    </div>
-
-    <a-scene 
-        embedded 
-        arjs="trackingMethod: best; debugUIEnabled: false;" 
-        vr-mode-ui="enabled: false"
-        id="ar-scene"
-        class="hidden">
-        
+    <div id="status" class="searching">Buscando marcador...</div>
+    
+    <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-assets>
-            <audio 
-                id="musica" 
-                src="assets/test.mp3"
-                crossorigin="anonymous">
-            </audio>
+            <audio id="river" src="assets/358232_j_s_song.mp3" preload="auto"></audio>
         </a-assets>
 
-        <a-marker type="pattern" preset="hiro" id="hiro-marker">
-            <a-entity position="0 0.1 0" rotation="0 0 0">
-                <a-entity
-                    id="fuente-sonido"
-                    sound="src: #musica; autoplay: false; loop: true; volume: 0.7"
-                    position="0 0 0">
-                </a-entity>
+        <a-marker type="pattern" preset="hiro" id="hiroMarker">
+            <a-entity
+                id="soundEnt"
+                position="0 0 0"
+                sound="src: #river; autoplay: false; loop: false; positional: true">
             </a-entity>
         </a-marker>
         
         <a-entity camera></a-entity>
     </a-scene>
-    
-    <div id="instructions" class="hidden">
-        <p>Apunta la cámara hacia el marcador Hiro para activar la experiencia con audio</p>
-    </div>
 
     <script>
-        let audioFullyLoaded = false;
-        let sceneLoaded = false;
-        let soundComponentReady = false;
-        let markerFound = false;
-        let audioPlaying = false;
-        let loadingComplete = false;
+        const marker = document.querySelector('#hiroMarker');
+        const soundEntity = document.querySelector('#soundEnt');
+        const statusElement = document.querySelector('#status');
+        let hasPlayed = false;
 
-        function updateLoadingProgress(text) {
-            const progressElement = document.querySelector('.loading-progress');
-            if (progressElement) {
-                progressElement.textContent = text;
-            }
-        }
-
-        function updateMarkerStatus(found) {
-            const statusElement = document.getElementById('marker-status');
-            if (found) {
-                statusElement.textContent = '✅ Marcador detectado';
-                statusElement.className = 'marker-found';
-            } else {
-                statusElement.textContent = '🔍 Buscando marcador Hiro...';
-                statusElement.className = 'marker-searching';
-            }
-        }
-
-        function hideLoadingScreen() {
-            if (loadingComplete) return;
+        marker.addEventListener('markerFound', function() {
+            statusElement.textContent = 'Marcador detectado';
+            statusElement.className = 'found';
             
-            const loadingScreen = document.getElementById('loading-screen');
-            const arScene = document.getElementById('ar-scene');
-            const instructions = document.getElementById('instructions');
-            const markerStatus = document.getElementById('marker-status');
-            
-            loadingScreen.classList.add('hidden');
-            arScene.classList.remove('hidden');
-            instructions.classList.remove('hidden');
-            markerStatus.classList.remove('hidden');
-            loadingComplete = true;
-        }
-
-        function checkAllLoaded() {
-            if (audioFullyLoaded && sceneLoaded && soundComponentReady) {
-                updateLoadingProgress('¡Todo listo! Iniciando experiencia...');
-                setTimeout(hideLoadingScreen, 1000);
+            if (!hasPlayed) {
+                soundEntity.components.sound.playSound();
+                hasPlayed = true;
             }
-        }
+        });
 
-        function tryPlayAudio() {
-            const soundEntity = document.querySelector('#fuente-sonido');
-                    soundEntity.components.sound.playSound();
-                    audioPlaying = true;
-            
-        }
-
-        function stopAudio() {
-            const soundEntity = document.querySelector('#fuente-sonido');
-            if (soundEntity && soundEntity.components.sound && audioPlaying) {
-                try {
-                    soundEntity.components.sound.stopSound();
-                    audioPlaying = false;
-                } catch (error) {
-                    console.warn('Error deteniendo audio:', error);
-                }
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            updateLoadingProgress('Cargando escena AR...');
-            
-            const scene = document.querySelector('a-scene');
-            const soundEntity = document.querySelector('#fuente-sonido');
-            const marker = document.querySelector('#hiro-marker');
-            const audio = document.querySelector('#musica');
-
-            scene.addEventListener('loaded', function() {
-                sceneLoaded = true;
-                updateLoadingProgress('Escena cargada, verificando audio...');
-                
-                setTimeout(() => {
-                    if (soundEntity.components && soundEntity.components.sound) {
-                        soundComponentReady = true;
-                        updateLoadingProgress('Componente de audio listo...');
-                        checkAllLoaded();
-                    }
-                }, 500);
-            });
-
-            audio.addEventListener('canplaythrough', function() {
-                audioFullyLoaded = true;
-                updateLoadingProgress('Audio completamente cargado...');
-                checkAllLoaded();
-            });
-
-            audio.addEventListener('loadeddata', function() {
-                updateLoadingProgress('Datos de audio cargados...');
-            });
-
-            audio.addEventListener('error', function(e) {
-                console.error('Error cargando audio:', e);
-                audioFullyLoaded = true;
-                updateLoadingProgress('Continuando sin audio...');
-                checkAllLoaded();
-            });
-
-            marker.addEventListener('markerFound', function() {
-                if (!markerFound && loadingComplete) {
-                    markerFound = true;
-                    updateMarkerStatus(true);
-                    tryPlayAudio
-                }
-            });
-
-            marker.addEventListener('markerLost', function() {
-                if (markerFound) {
-                    markerFound = false;
-                    updateMarkerStatus(false);
-                    stopAudio();
-                }
-            });
-
-            setTimeout(function() {
-                if (!sceneLoaded) {
-                    sceneLoaded = true;
-                    soundComponentReady = true;
-                    updateLoadingProgress('Forzando carga de escena...');
-                    checkAllLoaded();
-                }
-            }, 6000);
-
-            setTimeout(function() {
-                if (!audioFullyLoaded) {
-                    audioFullyLoaded = true;
-                    updateLoadingProgress('Continuando sin audio completo...');
-                    checkAllLoaded();
-                }
-            }, 10000);
+        marker.addEventListener('markerLost', function() {
+            statusElement.textContent = 'Buscando marcador...';
+            statusElement.className = 'searching';
+            soundEntity.components.sound.stopSound();
+            hasPlayed = false;
         });
     </script>
 </body>
