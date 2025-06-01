@@ -40,7 +40,7 @@
     
     <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-assets>
-            <audio id="markerAudio" src="assets/audio/358232_j_s_song.mp3" preload="auto"></audio>
+            <audio id="markerAudio" src="assets/audio/latidos.mp3" preload="auto"></audio>
         </a-assets>
 
         <a-marker type="pattern" preset="hiro" id="hiroMarker">
@@ -49,7 +49,7 @@
                 gltf-model="url(assets/model/scene.gltf)"
                 scale="0.5 0.5 0.5"
                 rotation="-90 0 0"
-                position="0 0 0"
+                position="-0.2 -0.5 0"
                 visible="false">
             </a-entity>
             
@@ -66,7 +66,7 @@
             <a-entity
                 id="audioEntity"
                 position="0 0 0"
-                sound="src: #markerAudio; autoplay: false; loop: false; positional: true">
+                sound="src: #markerAudio; autoplay: false; loop: true; positional: true; volume: 4">
             </a-entity>
         </a-marker>
         
