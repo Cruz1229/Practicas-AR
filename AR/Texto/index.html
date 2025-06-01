@@ -16,20 +16,17 @@
     <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-marker type="pattern" preset="hiro">
             <a-entity position="0 0.1 0" rotation="0 0 0">
-                <a-text 
-                    value="Texto en AR.js" 
-                    color="white" 
+                <a-text
+                    value="Texto desde A-Frame"
+                    color="#00ff88"
+                    width="5"
                     align="center"
-                    position="0 1 0"
+                    position="0 1.5 0"
                     rotation="-90 0 0">
                 </a-text>
             </a-entity>
         </a-marker>
         <a-entity camera></a-entity>
     </a-scene>
-    
-    <div style="position: fixed; bottom: 20px; width: 100%; text-align: center; color: white; background-color: rgba(0,0,0,0.5);">
-        <p>Muestra el marcador Hiro a la cámara para ver el texto en realidad aumentada.</p>
-    </div>
 </body>
 </html>
