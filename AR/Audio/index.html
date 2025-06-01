@@ -40,14 +40,14 @@
     
     <a-scene embedded arjs="trackingMethod: best; debugUIEnabled: false;" vr-mode-ui="enabled: false">
         <a-assets>
-            <audio id="river" src="assets/358232_j_s_song.mp3" preload="auto"></audio>
+            <audio id="river" src="assets/latidos.mp3" preload="auto"></audio>
         </a-assets>
 
         <a-marker type="pattern" preset="hiro" id="hiroMarker">
             <a-entity
                 id="soundEnt"
                 position="0 0 0"
-                sound="src: #river; autoplay: false; loop: false; positional: true">
+                sound="src: #river; autoplay: false; loop: true; positional: true; volume: 5.0">
             </a-entity>
         </a-marker>
         
