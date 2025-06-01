@@ -53,8 +53,7 @@
 </head>
 <body>
     <audio loop id="modelAudio" preload="auto" style="display: none">
-        <source src="assets/358232_j_s_song.ogg" type="audio/ogg">
-        <source src="assets/358232_j_s_song.mp3" type="audio/mpeg">
+        <source src="assets/latidos.mp3" type="audio/mpeg">
     </audio>
     
     <div id="error"></div>
@@ -113,7 +112,7 @@
                         positionalAudio.setRolloffFactor(1);
                         positionalAudio.setDistanceModel('exponential');
                         positionalAudio.setMaxDistance(10);
-                        positionalAudio.setVolume(0.5);
+                        positionalAudio.setVolume(2.5);
                         
                         markerGroup.add(positionalAudio);
                         
