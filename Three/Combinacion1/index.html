@@ -152,8 +152,7 @@
     </div>
 
     <audio loop id="modelAudio" preload="auto" style="display: none">
-        <source src="assets/358232_j_s_song.ogg" type="audio/ogg">
-        <source src="assets/358232_j_s_song.mp3" type="audio/mpeg">
+        <source src="assets/latidos.mp3" type="audio/mpeg">
         Tu navegador no soporta audio HTML5.
     </audio>
     
@@ -263,7 +262,13 @@
                 function(gltf) {
                     gltfModel = gltf.scene;
                     gltfModel.scale.set(0.3, 0.3, 0.3);
-                    gltfModel.position.set(0, -0.5, 0);
+
+                    gltfModel.position.x = 0;
+                    gltfModel.position.y = 0;
+                    gltfModel.position.z = 10 * Math.PI / 100;
+
+                    gltfModel.rotation.x = -100 * Math.PI / 180;
+
                     markerGroup.add(gltfModel);
                     
                     statusElement.textContent = 'Modelo 3D cargado exitosamente';
@@ -296,7 +301,7 @@
             var fontLoader = new THREE.FontLoader();
             
             fontLoader.load('fonts/helvetiker_regular.typeface.json', function(font) {
-                var textGeometry = new THREE.TextGeometry('AR DEMO', {
+                var textGeometry = new THREE.TextGeometry('Corazon', {
                     font: font,
                     size: 0.15,
                     height: 0.05,
@@ -440,10 +445,6 @@
                 
                 if (gltfModel) {
                     gltfModel.rotation.y += deltaMsec/2000 * Math.PI;
-                }
-                
-                if (textMesh) {
-                    textMesh.rotation.z += deltaMsec/3000 * Math.PI;
                 }
                 
                 renderer.render(scene, camera);
