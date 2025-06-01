@@ -112,11 +112,11 @@
 
       const textureLoader = new THREE.TextureLoader();
       textureLoader.load('assets/imagen.jpg', texture => {
-        const imageGeometry = new THREE.PlaneGeometry(1, 1);
+        const imageGeometry = new THREE.PlaneGeometry(1.2, 1.2);
         const imageMaterial = new THREE.MeshBasicMaterial({
           map: texture,
           transparent: true,
-          opacity: 0.9,
+          opacity: 1,
           side: THREE.DoubleSide
         });
 
